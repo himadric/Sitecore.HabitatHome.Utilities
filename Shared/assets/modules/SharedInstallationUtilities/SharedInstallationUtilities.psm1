@@ -12,53 +12,20 @@ Function Replace-String {
     )
 
     Write-Verbose -Message $PSCmdlet.MyInvocation.MyCommand
-    
+
     Write-Verbose "Searching for: $search in string: $source to replace with $replace"
 
     $result = $null
     $result = $source -replace $search, $replace
-    
+
 
     Write-Verbose "Result: $result"
     return $result
 }
 
-Function Get-SitecoreModuleDetails {
-    param(
-        [Parameter(Mandatory = $true)]
-        [psobject]$assets,
-        [Parameter(Mandatory = $true)]
-        [string]$moduleId
-    )
-    Write-Verbose -Message $PSCmdlet.MyInvocation.MyCommand
-    Write-Verbose "Getting module: $moduleId"
-    
-    $assets = ConvertTo-Json -InputObject $assets | ConvertFrom-Json
 
-    $result = $null
-    $result = $assets.modules | Where-Object { $_.id -eq $moduleId}
 
-    Write-Verbose "Result: $($result.Name)"
-    return $result
-}
 
-Function Get-ObjectProperty {
-    param(
-        [Parameter(Mandatory = $true)]
-        [psobject]$module,
-        [Parameter(Mandatory = $true)]
-        [string]$field
-    )
-    Write-Verbose -Message $PSCmdlet.MyInvocation.MyCommand
-    
-    Write-Verbose "Getting property $field in  module"
-
-    $result = $null
-    $result = $module.$field
-
-    Write-Verbose "Result: $result"
-    return $result
-}
 Function Add-DatabaseUser {
     param(
         [Parameter(Mandatory)]
@@ -78,8 +45,8 @@ Function Add-DatabaseUser {
         [Parameter(Mandatory)]
         [bool] $IsCoreUser
     )
-   
-    #Write-Host ("Adding {0} to {1}_{2} with password {3}" -f $UserName, $DatabasePrefix, $DatabaseSuffix, $UserPassword   ) 
+
+    #Write-Host ("Adding {0} to {1}_{2} with password {3}" -f $UserName, $DatabasePrefix, $DatabaseSuffix, $UserPassword   )
     $sqlVariables = "DatabasePrefix = $DatabasePrefix", "DatabaseSuffix = $DatabaseSuffix", "UserName = $UserName", "Password = $UserPassword"
     $sqlFile = ""
     if ($IsCoreUser ) {
@@ -89,8 +56,8 @@ Function Add-DatabaseUser {
         $sqlFile = Join-Path (Resolve-Path "..\..") "\database\adddatabaseuser.sql"
     }
     #Write-Host "Sql File: $sqlFile"
-    Invoke-Sqlcmd -Variable $sqlVariables -Username $SqlAdminUser -Password $SqlAdminPassword -ServerInstance $SqlServer -InputFile $sqlFile 
-  
+    Invoke-Sqlcmd -Variable $sqlVariables -Username $SqlAdminUser -Password $SqlAdminPassword -ServerInstance $SqlServer -InputFile $sqlFile
+
 }
 
 Function Kill-DatabaseConnections {
@@ -106,14 +73,14 @@ Function Kill-DatabaseConnections {
         [Parameter(Mandatory)]
         [string] $DatabaseSuffix
     )
-   
-    #Write-Host ("Adding {0} to {1}_{2} with password {3}" -f $UserName, $DatabasePrefix, $DatabaseSuffix, $UserPassword   ) 
+
+    #Write-Host ("Adding {0} to {1}_{2} with password {3}" -f $UserName, $DatabasePrefix, $DatabaseSuffix, $UserPassword   )
     $sqlVariables = "DatabasePrefix = $DatabasePrefix", "DatabaseSuffix = $DatabaseSuffix"
     $sqlFile = Join-Path (Resolve-Path "..\..") "\database\killdatabaseconnections.sql"
-   
+
     #Write-Host "Sql File: $sqlFile"
-    Invoke-Sqlcmd -Variable $sqlVariables -Username $SqlAdminUser -Password $SqlAdminPassword -ServerInstance $SqlServer -InputFile $sqlFile 
-  
+    Invoke-Sqlcmd -Variable $sqlVariables -Username $SqlAdminUser -Password $SqlAdminPassword -ServerInstance $SqlServer -InputFile $sqlFile
+
 }
 
 Function Start-SitecoreSite {
@@ -151,11 +118,11 @@ Function Start-SitecoreSite {
             for ($i = 0; $i -lt 3; $i++) {
                 $response = Invoke-WebRequest -Method $Action -Uri $Uri -ContentType $ContentType -Body $Parameters -UseBasicParsing -TimeoutSec $TimeoutSec
                 Write-Verbose "Response code was '$($response.StatusCode)'"
-                if(CheckResponseStatus -Response $response -ExpectedResponseStatus $ExpectedStatusCode){
+                if (CheckResponseStatus -Response $response -ExpectedResponseStatus $ExpectedStatusCode) {
                     return
                 }
                 Start-Sleep -Seconds 20
-                
+
             }
             if (!(CheckResponseStatus -Response $response -ExpectedResponseStatus $ExpectedStatusCode)) {
                 throw "HTTP request $Uri expected Response code $ExpectedStatusCode but returned $($response.StatusCode)"
@@ -181,3 +148,33 @@ Function Start-SitecoreSite {
         Write-Error $_
     }
 }
+
+Function Assert-IsDemoModule {
+    param (
+        [Parameter(Mandatory, Position = 0)]
+        [string]$Wdp
+    )
+    Add-Type -Assembly "system.io.compression.filesystem"
+    $zip = [io.compression.zipfile]::OpenRead($Wdp)
+    $file = $zip.Entries | Where-Object { $_.Name -eq "parameters.xml" }
+    if ($null -eq $file) {
+        Write-Error -Message "parameters.xml file not found"
+        return $false
+    }
+
+    $stream = $file.open()
+    $reader = New-Object IO.StreamReader($stream)
+    $text = $reader.ReadToEnd()
+    $reader.Close()
+    $stream.Close()
+    $zip.Dispose()
+    $xml = [xml]$text
+    $iisAppParameterName = ($xml.parameters.parameter | Where-Object { $_.tags -contains "iisapp" }).name
+    if ( $iisAppParameterName -eq "IIS Web Application Name") {
+        return $true
+    }
+    else {
+        return $false
+    }
+}
+

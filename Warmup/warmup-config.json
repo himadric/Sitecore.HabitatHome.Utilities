@@ -4,9 +4,6 @@
         {
             "sitecore": [
                 {
-                    "url": "/?sc_mode=edit"
-                },
-                {
                     "url": "/sitecore/shell"
                 },
                 {

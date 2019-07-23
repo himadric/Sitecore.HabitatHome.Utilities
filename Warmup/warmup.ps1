@@ -1,5 +1,6 @@
 param(
     $instance = "habitathome.dev.local",
+    #$identityServerUrl = "https://identityserver.habitathome.dev.local",
     [ValidateSet('xp', 'xc', 'sitecore')]
     $demoType,
     $adminUser = "admin",
@@ -65,6 +66,44 @@ Function Get-SitecoreSession {
 
     return $session
 }
+# Function Get-SitecoreToken {
+#     param(
+#         [Parameter(Mandatory = $true, Position = 0)]
+#         [string]$identityserverUrl,
+#         [Parameter(Mandatory = $true, Position = 1)]
+#         [string]$username,
+#         [Parameter(Mandatory = $true, Position = 2)]
+#         [string]$password
+#     )
+#     $tokenendpointurl = $identityserverUrl + "/connect/token"
+#     $granttype = "password" # client_credentials / password 
+#     $client_id = "warmup-client"
+#     $client_secret = "ClientSecret"
+#     $scope = "openid sitecore.profile sitecore.profile.api offline_access"
+    
+#     $body = @{
+#         grant_type    = $granttype
+#         scope         = $scope
+#         client_id     = $client_id
+#         client_secret = $client_secret    
+#         username      = $username
+#         password      = $password
+#     }
+#     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+#     $headers.Add("Content-Type", 'application/x-www-form-urlencoded')
+#     $headers.Add("Accept", 'application/json')
+
+#     $resp = Invoke-RestMethod -Method Post -Body $body -Headers $headers -Uri $tokenendpointurl 
+
+#     Write-Host "`***** SUCCESSFULLY FETCHED TOKEN ***** `n" -foreground Green
+
+#     Write-Host "`ACCESS TOKEN: `n" -foreground Yellow
+#     $access_token = $resp.access_token #| Format-Table -Wrap | Out-String
+#     Write-Host $access_token -foreground White
+#     Write-Host   
+#     return $access_token
+    
+# }
 
 Function RequestPage {
     param(
@@ -75,7 +114,13 @@ Function RequestPage {
     )
     Write-Host $(Get-Date -Format HH:mm:ss.fff)
     Write-Host "requesting $url ..."
+
+    # $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
+    # $headers.Add("Authorization", ("Bearer {0}" -f $access_token))
+
     try { 
+        
+#        $response = Invoke-WebRequest -method Get $url -Headers $headers -TimeoutSec 60000 
         $response = Invoke-WebRequest $url -WebSession $session -TimeoutSec 60000 -UseBasicParsing
 
         if ($response.StatusCode -eq "200" ) {
@@ -97,10 +142,13 @@ Function RequestPage {
 }
 
 $demoType = $demoType.ToLower()
+#$session = Get-SitecoreToken $identityServerUrl ("sitecore\{0}" -f $adminUser) $adminPassword
 $session = Get-SitecoreSession "https://$instanceName" ("sitecore\{0}" -f $adminUser) $adminPassword
+
 $errors = 0
 
 Write-Host "Warming up Sitecore" -ForegroundColor Green
+
 foreach ($page in $config.urls.sitecore) {
     if (!$(RequestPage "https://$instanceName$($page.url)" $session)) {
         $errors++
