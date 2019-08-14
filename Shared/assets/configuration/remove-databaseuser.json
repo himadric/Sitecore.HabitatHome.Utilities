@@ -43,13 +43,14 @@
     "Tasks": {
         "RemoveUser": {
             "Type": "InvokeSqlcmd",
-            "Params": {
-                "UserName": "[parameter('SqlAdminUser')]",
-                "Password": "[parameter('SqlAdminPassword')]",
-                "Database": "[variable('Sql.DatabaseName')]",
-                "Query": "[parameter('Script')]",
-                "Variable": "[variable('Sql.Variables')]"
-            }
+          "Params": {
+            "ServerInstance": "[parameter('SqlServer')]",
+            "UserName": "[parameter('SqlAdminUser')]",
+            "Password": "[parameter('SqlAdminPassword')]",
+            "Database": "[variable('Sql.DatabaseName')]",
+            "Query": "[parameter('Script')]",
+            "Variable": "[variable('Sql.Variables')]"
+          }
         }
     }
 }
